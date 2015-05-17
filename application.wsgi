@@ -20,6 +20,7 @@ app = application = Bottle()
 redis_plugin = redis.RedisPlugin()
 app.install(redis_plugin)
 
+EXPIRATION_SEC = int(environ.get("EXPIRATION_SEC", 300))
 NOWPLAYING_URL = environ["NOWPLAYING_URL"]
 SUBMISSION_URL = environ["SUBMISSION_URL"]
 
@@ -112,8 +113,11 @@ def nowplaying(rdb):
     track = request.forms.get("t")
 
     if all((artist, track)):
-        npkey = "scrobblrr:user:{user}:submission".format(user=user)
-        rdb.hmset(npkey, {"artist": artist, "track": track})
+        npkey = "scrobblrr:user:{user}:nowplaying".format(user=user)
+        with rdb.pipeline() as pipe:
+            pipe.hmset(npkey, {"artist": artist, "track": track})
+            pipe.expire(npkey, EXPIRATION_SEC)
+            pipe.execute()
 
     # everything worked out
     return "OK"
@@ -143,7 +147,10 @@ def submission(rdb):
 
     if all((artist, track)):
         npkey = "scrobblrr:user:{user}:submission".format(user=user)
-        rdb.hmset(npkey, {"artist": artist, "track": track})
+        with rdb.pipeline() as pipe:
+            pipe.hmset(npkey, {"artist": artist, "track": track})
+            pipe.expire(npkey, EXPIRATION_SEC)
+            pipe.execute()
 
     # everything worked out
     return "OK"
