@@ -38,8 +38,9 @@ def handshake(rdb):
     if request.query.get("hs") != "true":
         return "ScrobbLRR submissions system."
 
-    # we only support protocol version 1.2
-    if request.query.get("p") != "1.2":
+    # we only support protocol version 1.2(.1)
+    proto = request.query.get("p")
+    if proto != "1.2" and proto != "1.2.1":
         return "FAILED Incorrect protocol version"
 
     # now we need to try and authenticate the user
