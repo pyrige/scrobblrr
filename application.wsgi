@@ -10,16 +10,18 @@ Copyright (c) 2015 Twisted Pear <pear at twistedpear dot at>
 See the file LICENSE for copying permission.
 """
 
-import hashlib
-import uuid
-
 from bottle import Bottle, request, response
 from bottle.ext import redis
-from urllib.parse import urljoin
+from hashlib import md5
+from os import environ
+from uuid import uuid4
 
 app = application = Bottle()
 redis_plugin = redis.RedisPlugin()
 app.install(redis_plugin)
+
+NOWPLAYING_URL = environ["NOWPLAYING_URL"]
+SUBMISSION_URL = environ["SUBMISSION_URL"]
 
 
 @app.get("/")
@@ -53,10 +55,10 @@ def handshake(rdb):
         return "BADAUTH Invalid user name"
 
     # calculate token := md5(md5(password) + timestamp)
-    ch = hashlib.new("md5")
+    ch = md5()
     ch.update(cred)
 
-    th = hashlib.new("md5")
+    th = md5()
     th.update(ch.hexdigest().encode())
     th.update(time.encode())
 
@@ -74,7 +76,7 @@ def handshake(rdb):
             pipe.execute()
 
         # now we can store a new session
-        session = uuid.uuid4().hex
+        session = uuid4().hex
         pipe.set(skey, session)
         pipe.hset("scrobblrr:sessions", session, user)
         pipe.execute()
@@ -84,8 +86,7 @@ def handshake(rdb):
             "{nowplaying}\n"
             "{submission}".format(
                 session=session,
-                nowplaying=urljoin(request.url, "nowplaying"),
-                submission=urljoin(request.url, "submission")))
+                nowplaying=NOWPLAYING_URL, submission=SUBMISSION_URL))
 
 
 @app.post("/nowplaying")
